@@ -8,7 +8,7 @@ app.get('/', function(req, res){
 	  res.sendFile(__dirname + '/index.html');
 });
 
-io.sockets.on('connection', function(socket) {
+io.on('connection', function(socket) {
   socket.on('drawClick', function(data) {
     socket.broadcast.emit('draw', {
       x: data.x,
