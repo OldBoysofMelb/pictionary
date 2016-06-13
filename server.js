@@ -16,6 +16,10 @@ io.on('connection', function(socket) {
       type: data.type
     });
   });
+
+  socket.on('clear', function(){
+  	socket.broadcast.emit('clear');
+  })
 });
 
 http.listen(4000, function(){
