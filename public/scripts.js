@@ -10,7 +10,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	ctx.strokeStyle = '#222222';
 
 	function draw(x, y, type) {
-		//console.log(x + " " + y + " " + type);
 		if (type === "dragstart") {
 			ctx.beginPath();
 			return ctx.moveTo(x, y);
@@ -22,12 +21,18 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		}
 	};
 
+	function clear() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+	}
+
 	var socket = io('http://localhost:4000');
 
 	socket.on('draw', function(data) {
 		return draw(data.x, data.y, data.type);
 	});
-
+	socket.on('clear', function() {
+		clear();
+	});
 
 	$('canvas').on('drag dragstart dragend', function(e) {
 		var offset, type, x, y;
@@ -44,5 +49,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
 			type: type
 		});
 	});
+
+
+	$('#clear').on('click', function(e) {
+		clear();
+		socket.emit('clear');
+	})
 });
 
