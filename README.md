@@ -6,15 +6,15 @@ It should facilitate drawing and guessing - Pictionary!
 
 ## To do:
 
-- Ability to join rooms.
-- Users.
-- Ability to assign turns.
+- Ability to join rooms
+- Users
+- Ability to assign turns
     - What happens if a player disconnects mid-game?
     - What happens if a player enters mid-game?
     - What determines turn order?
-- Scoring/guessing.
+- Scoring/guessing
 
 ## Stretch:
 
-- Better UI for colours/size.
-- Non-shit CSS.
+- Better UI for colours/size
+- Non-shit CSS
