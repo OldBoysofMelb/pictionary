@@ -32,20 +32,26 @@ document.addEventListener("DOMContentLoaded", function(event) {
     var socket = io('http://localhost:4000');
 
     var strokes = {};
-    var current = 0;
-    var last = 0;
+    var currentStroke = 0;
+    var lastStroke = 0;
 
-    socket.emit('getCurrent');
+    var messages = {};
+    var currentMessage = 0;
+    var lastMessage = 0;
 
-    function requestMissing() {
+
+    socket.emit('getCurrentStroke');
+    socket.emit('getCurrentMessage');
+
+    function requestMissingStrokes() {
         var keys = Object.getOwnPropertyNames(strokes).map(Number);
 
         if (keys[0] != 0) {
             keys.unshift(0);
         }
 
-        if (keys[keys.length - 1] != current) {
-            keys.push(current);
+        if (keys[keys.length - 1] != currentStroke) {
+            keys.push(currentStroke);
         }
 
         for (var i = 0; i < keys.length - 1; i++) {
@@ -60,14 +66,47 @@ document.addEventListener("DOMContentLoaded", function(event) {
         }
     }
 
-    socket.on('current', function (data) {
-        current = data;
-        window.console.log(current);
+    function requestMissingMessages() {
+        var keys = Object.getOwnPropertyNames(messages).map(Number);
 
-        if (current > 0 && last + 1 != current) {
-            requestMissing();
+        if (keys[0] != 0) {
+            keys.unshift(0);
+        }
+
+        if (keys[keys.length - 1] != currentMessage) {
+            keys.push(currentMessage);
+        }
+
+        for (var i = 0; i < keys.length - 1; i++) {
+            if (keys[i+1] - keys[i] == 2) {
+                socket.emit('getMessage', keys[i] + j);
+            } else if (keys[i+1] - keys[i] > 2) {
+                socket.emit('getMessages', {
+                    start: keys[i] + 1,
+                    end: keys[i+1]
+                });
+            }
+        }
+    }
+
+    socket.on('currentStroke', function (data) {
+        currentStroke = data;
+        window.console.log(currentStroke);
+
+        if (currentStroke > 0 && lastStroke + 1 != currentStroke) {
+            requestMissingStrokes();
         }
     });
+
+    socket.on('currentMessage', function (data) {
+        currentMessage = data;
+        window.console.log(currentMessage);
+
+        if (currentMessage > 0 && lastMessage + 1 != currentMessage) {
+            requestMissingMessages();
+        }
+    });
+
 
     socket.on('draw', function(data) {
         strokes[data.id] = data;
@@ -82,6 +121,14 @@ document.addEventListener("DOMContentLoaded", function(event) {
         }
     });
 
+    socket.on('messages', function(data) {
+        for (var i in data) {
+            messages[data[i].id] = data[i];
+            $('#messages').append($('<li>').text(data[i].data));
+        }
+    });
+
+
     socket.on('drawReceived', function(data) {
         strokes[data.id] = data.data;
     });
@@ -89,6 +136,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
     socket.on('clear', function() {
         clear();
         strokes = {};
+    });
+
+    socket.on('message', function(data){
+        messages[data.id] = data.data;
+        $('#messages').append($('<li>').text(messages[data.id]));
     });
 
     $('canvas').on('drag dragstart dragend', function(e) {
@@ -122,6 +174,13 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
     $('#size').change(function(){
         ctx.lineWidth = $("#size")[0].value;
+    });
+
+
+    $('form').submit(function(){
+        socket.emit('message', $('#m').val());
+        $('#m').val('');
+        return false;
     });
 });
 
