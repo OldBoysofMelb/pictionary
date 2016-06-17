@@ -7,6 +7,8 @@
     width: 200px;
     height: 600px;
     overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 aside {
