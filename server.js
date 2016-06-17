@@ -48,8 +48,8 @@ io.on('connection', function(socket) {
 
 
     socket.on('drawClick', function(data) {
-        let id = strokes.length;
-        strokes.push({id: id, data: data});
+        let id = strokes.push(data) - 1;
+        strokes[id]['id'] = id;
 
         console.log(id, strokes[id]);
 
