@@ -4,7 +4,7 @@ This is meant to be a html5 canvas / websockets clone of http://www.pinturillo2.
 
 It should facilitate drawing and guessing - Pictionary!
 
-# To do:
+## To do:
 
 - Ability to join rooms.
 - Users.
@@ -14,7 +14,7 @@ It should facilitate drawing and guessing - Pictionary!
     - What determines turn order?
 - Scoring/guessing.
 
-# Stretch:
+## Stretch:
 
 - Better UI for colours/size.
 - Non-shit CSS.
