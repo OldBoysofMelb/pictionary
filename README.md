@@ -13,4 +13,8 @@ It should facilitate drawing and guessing - Pictionary!
     - What happens if a player enters mid-game?
     - What determines turn order?
 - Scoring/guessing.
+
+# Stretch:
+
 - Better UI for colours/size.
+- Non-shit CSS.
