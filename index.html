@@ -11,7 +11,9 @@
     <title>HTML5 Canvas + Node.JS Socket.io</title>
 </head>
 <body>
+    <section> 
     <canvas id="canvas" width="800" height="600"></canvas>
+    <br>
     <button id="clear">Clear</button>
     Colour: 
     <select id="colour">
@@ -26,9 +28,13 @@
         <option value="brown">Brown</option>
     </select>
     Size: <input id="size" type="number" value="3"></input>
+    </section>
 
-    <ul id="messages"></ul>
+    <aside>
+    <div id="messages"></div>
+    <br>
     <form action="">
       <input id="m" autocomplete="off" /><button>Send</button>
     </form>
+    </aside>
 </body>
