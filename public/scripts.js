@@ -52,11 +52,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
         var keys = Object.getOwnPropertyNames(strokes).map(Number);
 
         if (keys[0] != 0) {
-            keys.unshift(0);
+            keys.unshift(-1);
         }
 
         if (keys[keys.length - 1] != currentStroke) {
-            keys.push(currentStroke);
+            keys.push(currentStroke + 1);
         }
 
         for (var i = 0; i < keys.length - 1; i++) {
@@ -75,11 +75,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
         var keys = Object.getOwnPropertyNames(messages).map(Number);
 
         if (keys[0] != 0) {
-            keys.unshift(0);
+            keys.unshift(-1);
         }
 
         if (keys[keys.length - 1] != currentMessage) {
-            keys.push(currentMessage);
+            keys.push(currentMessage + 1);
         }
 
         for (var i = 0; i < keys.length - 1; i++) {
