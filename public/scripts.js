@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
     ctx.lineWidth = 3;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.strokeStyle = $("select option:selected")[0]["value"];
+    ctx.strokeStyle = $("select option:selected")[0].value;
 
     function draw(x, y, type, colour, size) {
         ctx.strokeStyle = colour;
@@ -21,7 +21,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
         } else {
             ctx.closePath();
         }
-        ctx.strokeStyle = $("select option:selected")[0]["value"];
+        ctx.strokeStyle = $("select option:selected")[0].value;
+        ctx.lineWidth = $("#size")[0].value;
     }
 
     function clear() {
@@ -116,7 +117,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
     });
 
     $('select').change(function(){
-        ctx.strokeStyle = $("select option:selected")[0]["value"];
+        ctx.strokeStyle = $("select option:selected")[0].value;
+    });
+
+    $('#size').change(function(){
+        ctx.lineWidth = $("#size")[0].value;
     });
 });
 
