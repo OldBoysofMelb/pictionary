@@ -29,6 +29,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
+    function showMessage(message) {
+        $('#messages').append($('<div>').text(message));
+        $('#messages').scrollTop($('#messages')[0].scrollHeight);
+    }
+
     var socket = io('http://localhost:4000');
 
     var strokes = {};
@@ -124,7 +129,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
     socket.on('messages', function(data) {
         for (var i in data) {
             messages[data[i].id] = data[i];
-            $('#messages').append($('<li>').text(data[i].data));
+            showMessage(data[i].data);
         }
     });
 
@@ -140,7 +145,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
     socket.on('message', function(data){
         messages[data.id] = data.data;
-        $('#messages').append($('<li>').text(messages[data.id]));
+        showMessage(data.data);
     });
 
     $('canvas').on('drag dragstart dragend', function(e) {
