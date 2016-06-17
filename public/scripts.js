@@ -7,18 +7,21 @@ document.addEventListener("DOMContentLoaded", function(event) {
     ctx.lineWidth = 3;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.strokeStyle = '#222222';
+    ctx.strokeStyle = $("select option:selected")[0]["value"];
 
-    function draw(x, y, type) {
+    function draw(x, y, type, colour, size) {
+        ctx.strokeStyle = colour;
+        ctx.lineWidth = size;
         if (type === "dragstart") {
             ctx.beginPath();
-            return ctx.moveTo(x, y);
+            ctx.moveTo(x, y);
         } else if (type === "drag") {
             ctx.lineTo(x, y);
-            return ctx.stroke();
+            ctx.stroke();
         } else {
-            return ctx.closePath();
+            ctx.closePath();
         }
+        ctx.strokeStyle = $("select option:selected")[0]["value"];
     }
 
     function clear() {
@@ -68,13 +71,13 @@ document.addEventListener("DOMContentLoaded", function(event) {
     socket.on('draw', function(data) {
         strokes[data.id] = data;
 
-        return draw(data.x, data.y, data.type);
+        return draw(data.x, data.y, data.type, data.colour, data.size);
     });
 
     socket.on('drawStrokes', function(data) {
         for (var i in data) {
             strokes[data[i].id] = data[i];
-            draw(data[i].x, data[i].y, data[i].type);
+            draw(data[i].x, data[i].y, data[i].type, data[i].colour, data[i].size);
         }
     });
 
@@ -88,18 +91,22 @@ document.addEventListener("DOMContentLoaded", function(event) {
     });
 
     $('canvas').on('drag dragstart dragend', function(e) {
-        var offset, type, x, y;
+        var offset, type, x, y, colour, size;
+        colour = ctx.strokeStyle;
+        size = ctx.lineWidth;
         type = e.handleObj.type;
         offset = $(this).offset();
         e.offsetX = e.pageX - offset.left;
         e.offsetY = e.pageY - offset.top;
         x = e.offsetX;
         y = e.offsetY;
-        draw(x, y, type);
+        draw(x, y, type, colour, size);
         socket.emit('drawClick', {
             x: x,
             y: y,
-            type: type
+            type: type,
+            colour: colour,
+            size: size
         });
     });
 
