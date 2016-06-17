@@ -107,5 +107,9 @@ document.addEventListener("DOMContentLoaded", function(event) {
         clear();
         socket.emit('clear');
     });
+
+    $('select').change(function(){
+        ctx.strokeStyle = $("select option:selected")[0]["value"];
+    });
 });
 
