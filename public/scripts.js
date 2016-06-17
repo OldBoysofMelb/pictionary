@@ -114,7 +114,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 
     socket.on('draw', function(data) {
-        strokes[data.id] = data;
+        strokes[data.id] = data.data;
 
         return draw(data.x, data.y, data.type, data.colour, data.size);
     });
