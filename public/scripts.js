@@ -114,7 +114,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 
     socket.on('draw', function(data) {
-        strokes[data.id] = data.data;
+        strokes[data.id] = data;
 
         return draw(data.x, data.y, data.type, data.colour, data.size);
     });
@@ -173,16 +173,16 @@ document.addEventListener("DOMContentLoaded", function(event) {
         socket.emit('clear');
     });
 
-    $('select').change(function(){
+    $('select').change(function() {
         ctx.strokeStyle = $("select option:selected")[0].value;
     });
 
-    $('#size').change(function(){
+    $('#size').change(function() {
         ctx.lineWidth = $("#size")[0].value;
     });
 
 
-    $('form').submit(function(){
+    $('form').submit(function() {
         socket.emit('message', $('#m').val());
         $('#m').val('');
         return false;
