@@ -1,17 +1,28 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-	<meta charset="UTF-8">
-	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
-	<script type="text/javascript" src="jquery.event.drag-2.2.js"></script>
-	<script src="/socket.io/socket.io.js"></script>
-	<link rel="stylesheet" href="style.css" />
-	<script type="text/javascript" src="scripts.js"></script>
+    <meta charset="UTF-8">
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+    <script type="text/javascript" src="jquery.event.drag-2.2.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="style.css" />
+    <script type="text/javascript" src="scripts.js"></script>
 
-	<title>HTML5 Canvas + Node.JS Socket.io</title>
+    <title>HTML5 Canvas + Node.JS Socket.io</title>
 </head>
 <body>
-	<canvas id="canvas" width="1860" height="920"></canvas>
-	<button id="clear">Clear</button>
-
+    <canvas id="canvas" width="1860" height="920"></canvas>
+    <button id="clear">Clear</button>
+    Colour: 
+    <select id="colour">
+        <option value="black">Black</option>
+        <option value="white">White</option>
+        <option value="red">Red</option>
+        <option value="purple">Purple</option>
+        <option value="blue">Blue</option>
+        <option value="green">Green</option>
+        <option value="yellow">Yellow</option>
+        <option value="orange">Orange</option>
+        <option value="brown">Brown</option>
+    </select>
 </body>
