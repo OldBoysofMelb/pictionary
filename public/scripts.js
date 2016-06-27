@@ -38,11 +38,9 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
     var strokes = {};
     var currentStroke = 0;
-    var lastStroke = 0;
 
     var messages = {};
     var currentMessage = 0;
-    var lastMessage = 0;
 
 
     socket.emit('getCurrentStroke');
@@ -61,7 +59,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
         for (var i = 0; i < keys.length - 1; i++) {
             if (keys[i+1] - keys[i] == 2) {
-                socket.emit('getStroke', keys[i] + j);
+                socket.emit('getStroke', keys[i] + 1);
             } else if (keys[i+1] - keys[i] > 2) {
                 socket.emit('getStrokes', {
                     start: keys[i] + 1,
@@ -84,7 +82,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
         for (var i = 0; i < keys.length - 1; i++) {
             if (keys[i+1] - keys[i] == 2) {
-                socket.emit('getMessage', keys[i] + j);
+                socket.emit('getMessage', keys[i] + 1);
             } else if (keys[i+1] - keys[i] > 2) {
                 socket.emit('getMessages', {
                     start: keys[i] + 1,
@@ -98,7 +96,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
         currentStroke = data;
         window.console.log(currentStroke);
 
-        if (currentStroke > 0 && lastStroke + 1 != currentStroke) {
+        if (strokes.length != currentStroke) {
             requestMissingStrokes();
         }
     });
@@ -107,7 +105,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
         currentMessage = data;
         window.console.log(currentMessage);
 
-        if (currentMessage > 0 && lastMessage + 1 != currentMessage) {
+        if (messages.length != currentMessage) {
             requestMissingMessages();
         }
     });
