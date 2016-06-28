@@ -22,6 +22,12 @@ var socketIDtoSessionID = new Map();
 var sessionIDtoSocketID = new Map();
 
 io.on('connection', function(socket) {
+
+    // Update the "freshness" of this clients session.
+    var session = sessionData.get(socketIDtoSessionID.get(socket.id))
+    if(session) session.accessTime = Date.now();
+
+
     socket.on('getCurrentStroke', function() {
         socket.emit('currentStroke', strokes.length - 1);
     });
@@ -103,7 +109,7 @@ io.on('connection', function(socket) {
 
     socket.on('sessionID', function(id){
         console.log("Connection from client with id: " + id);
-        if(id === null){
+        if(id === null || !sessionIDtoSocketID.has(id)){
             // Give them a new session ID.
             let sessionID = uuid.v4();
             console.log("issuing new session id: " + sessionID);
@@ -113,7 +119,7 @@ io.on('connection', function(socket) {
             socketIDtoSessionID.set(socket.id, sessionID);
             sessionIDtoSocketID.set(sessionID, socket.id);
             // Initialise data.
-            sessionData.set(sessionID, {});
+            sessionData.set(sessionID, {accessTime: Date.now()});
         }else{
             /* Update their session ID.
              * We don't unset the old socket.id => session id, which is a
@@ -128,7 +134,7 @@ io.on('connection', function(socket) {
     socket.on('requestNick', function(nick){
         // check if nick is unique. 
         let unique = true;
-        for (var value of sessionData.values()) {
+        for (let value of sessionData.values()) {
             console.log(nick + " " + value.nick);
             if(nick === value.nick){
                 unique = false;
@@ -136,12 +142,13 @@ io.on('connection', function(socket) {
             }
         }
 
-        if(unique){
+        let sessionID = socketIDtoSessionID.get(socket.id);
+
+        if(unique && sessionID){
             // Notify them their nick was accepted
             socket.emit('nickStatus', true);
 
             // We now set their nick.
-            let sessionID = socketIDtoSessionID.get(socket.id);
             sessionData.get(sessionID).nick = nick;
 
             // Notify everyone that the nick has been set.
