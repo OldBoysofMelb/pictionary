@@ -5,6 +5,9 @@ var app = express();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
+var uuid = require('node-uuid');
+
+
 app.use(express.static('public'));
 app.get('/', function(req, res){
     res.sendFile(__dirname + '/index.html');
@@ -13,6 +16,11 @@ app.get('/', function(req, res){
 var strokes = [];
 var messages = [];
 
+var sessionData = new Map(); 
+var socketIDtoSessionID = new Map();
+// sessionData doesn't store the socket id, so we seperate it out.
+var sessionIDtoSocketID = new Map();
+
 io.on('connection', function(socket) {
     socket.on('getCurrentStroke', function() {
         socket.emit('currentStroke', strokes.length - 1);
@@ -20,6 +28,14 @@ io.on('connection', function(socket) {
 
     socket.on('getCurrentMessage', function() {
         socket.emit('currentMessage', messages.length - 1);
+    });
+
+    socket.on('getNicks', function(){
+        var nicks = []
+        for (var [key, value] of sessionData.entries()) {
+            nicks.push([key, value.nick]);
+        }   
+        socket.emit('nicks', nicks);
     });
 
     socket.on('getStroke', function(id) {
@@ -70,16 +86,70 @@ io.on('connection', function(socket) {
 
     socket.on('message', function(data){
         let id = messages.length;
-        messages.push({id: id, data: data});
+        messages.push({id: id,
+                       sessionID: socketIDtoSessionID.get(socket.id), 
+                       data: data});
 
         console.log(id, messages[id]);
 
         socket.emit('messageReceived', {
             id: id,
+            sessionID: socketIDtoSessionID.get(socket.id),
             data: data
         });
 
         io.emit('message', messages[id]);
+    });
+
+    socket.on('sessionID', function(id){
+        console.log("Connection from client with id: " + id);
+        if(id === null){
+            // Give them a new session ID.
+            let sessionID = uuid.v4();
+            console.log("issuing new session id: " + sessionID);
+
+            socket.emit('setSessionID', sessionID);
+
+            socketIDtoSessionID.set(socket.id, sessionID);
+            sessionIDtoSocketID.set(sessionID, socket.id);
+            // Initialise data.
+            sessionData.set(sessionID, {});
+        }else{
+            /* Update their session ID.
+             * We don't unset the old socket.id => session id, which is a
+             * memory leak, but I don't think it will lead to issues 
+             * (at least logic ones) currently.
+             */
+            socketIDtoSessionID.set(socket.id, id);
+            sessionIDtoSocketID.set(id, socket.id);
+        }
+    });
+
+    socket.on('requestNick', function(nick){
+        // check if nick is unique. 
+        let unique = true;
+        for (var value of sessionData.values()) {
+            console.log(nick + " " + value.nick);
+            if(nick === value.nick){
+                unique = false;
+                break;
+            }
+        }
+
+        if(unique){
+            // Notify them their nick was accepted
+            socket.emit('nickStatus', true);
+
+            // We now set their nick.
+            let sessionID = socketIDtoSessionID.get(socket.id);
+            sessionData.get(sessionID).nick = nick;
+
+            // Notify everyone that the nick has been set.
+            io.emit('nick', { sessionID: sessionID, nick: nick });
+        }else{
+            // Notify them that their nick was not allowed.
+            socket.emit('nickStatus', false);
+        }
     });
 
 });
