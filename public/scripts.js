@@ -9,6 +9,15 @@ document.addEventListener("DOMContentLoaded", function(event) {
     ctx.lineCap = 'round';
     ctx.strokeStyle = $("select option:selected")[0].value;
 
+    var nicks = new Map();
+    var socket = io('http://localhost:4000');
+
+    var strokes = {};
+    var currentStroke = 0;
+
+    var messages = {};
+    var currentMessage = 0;
+
     function draw(x, y, type, colour, size) {
         ctx.strokeStyle = colour;
         ctx.lineWidth = size;
@@ -29,19 +38,15 @@ document.addEventListener("DOMContentLoaded", function(event) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    function showMessage(message) {
-        $('#messages').append($('<div>').text(message));
+    function showMessage(sessionID, message) {
+        let username = nicks.get(sessionID);
+        $('#messages').append($('<div>').text(username + ": " + message));
         $('#messages').scrollTop($('#messages')[0].scrollHeight);
     }
 
-    var socket = io('http://localhost:4000');
+    socket.emit('sessionID', localStorage.getItem('sessionID'));
 
-    var strokes = {};
-    var currentStroke = 0;
-
-    var messages = {};
-    var currentMessage = 0;
-
+    socket.emit('getNicks');
 
     socket.emit('getCurrentStroke');
     socket.emit('getCurrentMessage');
@@ -92,9 +97,13 @@ document.addEventListener("DOMContentLoaded", function(event) {
         }
     }
 
+    socket.on('setSessionID', function(data) {
+        localStorage.setItem('sessionID', data);
+    })
+
     socket.on('currentStroke', function (data) {
         currentStroke = data;
-        window.console.log(currentStroke);
+        //window.console.log(currentStroke);
 
         if (strokes.length != currentStroke) {
             requestMissingStrokes();
@@ -103,7 +112,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
     socket.on('currentMessage', function (data) {
         currentMessage = data;
-        window.console.log(currentMessage);
+        //window.console.log(currentMessage);
 
         if (messages.length != currentMessage) {
             requestMissingMessages();
@@ -127,7 +136,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
     socket.on('messages', function(data) {
         for (var i in data) {
             messages[data[i].id] = data[i];
-            showMessage(data[i].data);
+            showMessage(data[i].sessionID, data[i].data);
         }
     });
 
@@ -142,9 +151,28 @@ document.addEventListener("DOMContentLoaded", function(event) {
     });
 
     socket.on('message', function(data){
-        messages[data.id] = data.data;
-        showMessage(data.data);
+        messages[data.id] = data;
+        showMessage(data.sessionID, data.data);
     });
+
+    socket.on('nick', function(data){
+        nicks.set(data.sessionID, data.nick);
+    });
+
+    socket.on('nicks', function(data){
+        // We receive a list of key value pairs. We then add this to our map.
+        for (let entry of data){
+            nicks.set(entry[0], entry[1]);
+        }
+    });
+
+    socket.on('nickStatus', function(accepted){
+        if(accepted){
+            $('#nick').val('Your Nick is now set.');
+        }else{
+            $('#nick').val('Nick already taken!');
+        }
+    })
 
     $('canvas').on('drag dragstart dragend', function(e) {
         var offset, type, x, y, colour, size;
@@ -185,5 +213,12 @@ document.addEventListener("DOMContentLoaded", function(event) {
         $('#m').val('');
         return false;
     });
+
+    $('#requestNick').on('click', function(e) {
+        socket.emit('requestNick', $('#nick').val());
+        $('#nick').val('');
+        return false;        
+    });
+
 });
 
