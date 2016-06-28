@@ -21,22 +21,32 @@ var socketIDtoSessionID = new Map();
 // sessionData doesn't store the socket id, so we seperate it out.
 var sessionIDtoSocketID = new Map();
 
+// This function is what we use instead of socket.on(eventname, callback)
+// It keeps track of the last time a session was accessed
+function on(socket,eventname,callback){
+    function wrappedCallback(){
+        if(socketIDtoSessionID.has(socket.id)){
+            // Update the "freshness" of this clients session.
+            var session = sessionData.get(socketIDtoSessionID.get(socket.id))
+            if(session) session.accessTime = Date.now();
+        }
+        return callback.apply(this, arguments);
+    }
+
+    socket.on(eventname,wrappedCallback);
+}
+
 io.on('connection', function(socket) {
 
-    // Update the "freshness" of this clients session.
-    var session = sessionData.get(socketIDtoSessionID.get(socket.id))
-    if(session) session.accessTime = Date.now();
-
-
-    socket.on('getCurrentStroke', function() {
+    on(socket,'getCurrentStroke', function() {
         socket.emit('currentStroke', strokes.length - 1);
     });
 
-    socket.on('getCurrentMessage', function() {
+    on(socket,'getCurrentMessage', function() {
         socket.emit('currentMessage', messages.length - 1);
     });
 
-    socket.on('getNicks', function(){
+    on(socket,'getNicks', function(){
         var nicks = []
         for (var [key, value] of sessionData.entries()) {
             nicks.push([key, value.nick]);
@@ -44,32 +54,32 @@ io.on('connection', function(socket) {
         socket.emit('nicks', nicks);
     });
 
-    socket.on('getStroke', function(id) {
+    on(socket,'getStroke', function(id) {
         if (strokes[id]) {
             socket.emit('draw', strokes[id]);
         }
     });
 
-    socket.on('getMessage', function(id) {
+    on(socket,'getMessage', function(id) {
         if (messages[id]) {
             socket.emit('message', messages[id]);
         }
     });
 
-    socket.on('getStrokes', function(data) {
+    on(socket,'getStrokes', function(data) {
         if (strokes[data.start] && strokes[data.end - 1]) {
             socket.emit('drawStrokes', strokes.slice(data.start, data.end));
         }
     });
 
-    socket.on('getMessages', function(data) {
+    on(socket,'getMessages', function(data) {
         if (messages[data.start] && messages[data.end - 1]) {
             socket.emit('messages', messages.slice(data.start, data.end));
         }
     });
 
 
-    socket.on('drawClick', function(data) {
+    on(socket,'drawClick', function(data) {
         let id = strokes.push(data) - 1;
         strokes[id]['id'] = id;
 
@@ -83,14 +93,14 @@ io.on('connection', function(socket) {
         socket.broadcast.emit('draw', strokes[id]);
     });
 
-    socket.on('clear', function() {
+    on(socket,'clear', function() {
         strokes = [];
 
         socket.broadcast.emit('clear');
         console.log('clearing');
     });
 
-    socket.on('message', function(data){
+    on(socket,'message', function(data){
         let id = messages.length;
         messages.push({id: id,
                        sessionID: socketIDtoSessionID.get(socket.id), 
@@ -107,7 +117,7 @@ io.on('connection', function(socket) {
         io.emit('message', messages[id]);
     });
 
-    socket.on('sessionID', function(id){
+    on(socket,'sessionID', function(id){
         console.log("Connection from client with id: " + id);
         if(id === null || !sessionIDtoSocketID.has(id)){
             // Give them a new session ID.
@@ -131,7 +141,7 @@ io.on('connection', function(socket) {
         }
     });
 
-    socket.on('requestNick', function(nick){
+    on(socket,'requestNick', function(nick){
         // check if nick is unique. 
         let unique = true;
         for (let value of sessionData.values()) {
