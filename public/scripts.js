@@ -38,6 +38,10 @@ document.addEventListener("DOMContentLoaded", function(event) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
+    function clearMessages(){
+        $('#messages').empty();
+    }
+
     function showMessage(sessionID, message) {
         let username = nicks.get(sessionID);
         $('#messages').append($('<div>').text(username + ": " + message));
@@ -45,11 +49,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
     }
 
     socket.emit('sessionID', localStorage.getItem('sessionID'));
-
-    socket.emit('getNicks');
-
-    socket.emit('getCurrentStroke');
-    socket.emit('getCurrentMessage');
 
     function requestMissingStrokes() {
         var keys = Object.getOwnPropertyNames(strokes).map(Number);
@@ -96,6 +95,29 @@ document.addEventListener("DOMContentLoaded", function(event) {
             }
         }
     }
+
+    socket.on('joinedRoom', function(){
+        // Clear display
+        clear();
+        clearMessages();
+
+        // Clear out local data.
+        nicks = new Map();
+        strokes = {};
+        currentStroke = 0;
+        messages = {};
+        currentMessage = 0;
+
+        // Request it from server.
+        socket.emit('getNicks');
+        socket.emit('getCurrentStroke');
+        socket.emit('getCurrentMessage');
+
+        /* We could have remembered old rooms data, but we shouldn't be 
+         * switching often, so resending all the data from the server is
+         * fine.
+         */
+    })
 
     socket.on('setSessionID', function(data) {
         localStorage.setItem('sessionID', data);
@@ -218,6 +240,12 @@ document.addEventListener("DOMContentLoaded", function(event) {
         socket.emit('requestNick', $('#nick').val());
         $('#nick').val('');
         return false;        
+    });
+
+    $('#joinRoom').on('click', function(e) {
+        socket.emit('joinRoom', $('#room').val());
+        $('#room').val('');
+        return false;
     });
 
 });

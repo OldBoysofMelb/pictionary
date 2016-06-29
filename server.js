@@ -13,8 +13,9 @@ app.get('/', function(req, res){
     res.sendFile(__dirname + '/index.html');
 });
 
-var strokes = [];
-var messages = [];
+var strokes = new Map(); // room name to array of strokes
+var messages = new Map(); // room name to array of messages
+var roomData = new Map(); // room name to object containing game state
 
 var sessionData = new Map(); 
 var socketIDtoSessionID = new Map();
@@ -36,85 +37,120 @@ function on(socket,eventname,callback){
     socket.on(eventname,wrappedCallback);
 }
 
+// This function returns a session object given a socketID
+// We could also add functions to safely set values in the session
+function getSession(socketID){
+    let sessionID = socketIDtoSessionID.get(socketID);
+    if(sessionID === undefined) return null;
+    let session = sessionData.get(sessionID);
+    return session;
+}
+
 io.on('connection', function(socket) {
 
     on(socket,'getCurrentStroke', function() {
-        socket.emit('currentStroke', strokes.length - 1);
+        let room = getSession(socket.id).room;
+        if(!room) return; //very basic gaurd. A bit simple and repetitive.
+        socket.emit('currentStroke', strokes.get(room).length - 1);
     });
 
     on(socket,'getCurrentMessage', function() {
-        socket.emit('currentMessage', messages.length - 1);
+        let room = getSession(socket.id).room;
+        if(!room) return; //very basic gaurd. A bit simple and repetitive.
+        socket.emit('currentMessage', messages.get(room).length - 1);
     });
 
     on(socket,'getNicks', function(){
-        var nicks = []
+        var nicks = [];
+        let room = getSession(socket.id).room;
+        if(!room) return; //very basic gaurd. A bit simple and repetitive.
         for (var [key, value] of sessionData.entries()) {
-            nicks.push([key, value.nick]);
+            // There might be a smarter way of doing this, but I don't know
+            if(value.room == room) nicks.push([key, value.nick]);
         }   
         socket.emit('nicks', nicks);
     });
 
     on(socket,'getStroke', function(id) {
-        if (strokes[id]) {
-            socket.emit('draw', strokes[id]);
+        let room = getSession(socket.id).room;
+        if(!room) return; //very basic gaurd. A bit simple and repetitive.
+        if (strokes.get(room)[id]) {
+            socket.emit('draw', strokes.get(room)[id]);
         }
     });
 
     on(socket,'getMessage', function(id) {
-        if (messages[id]) {
-            socket.emit('message', messages[id]);
+        let room = getSession(socket.id).room;
+        if(!room) return; //very basic gaurd. A bit simple and repetitive.
+        if (messages.get(room)[id]) {
+            socket.emit('message', messages.get(room)[id]);
         }
     });
 
     on(socket,'getStrokes', function(data) {
-        if (strokes[data.start] && strokes[data.end - 1]) {
-            socket.emit('drawStrokes', strokes.slice(data.start, data.end));
+        let room = getSession(socket.id).room;
+        if(!room) return; //very basic gaurd. A bit simple and repetitive. 
+        let roomStrokes = strokes.get(room);
+
+        if (roomStrokes[data.start] && roomStrokes[data.end - 1]) {
+            socket.emit('drawStrokes', roomStrokes.slice(data.start, data.end));
         }
     });
 
     on(socket,'getMessages', function(data) {
-        if (messages[data.start] && messages[data.end - 1]) {
-            socket.emit('messages', messages.slice(data.start, data.end));
+        let room = getSession(socket.id).room;
+        if(!room) return; //very basic gaurd. A bit simple and repetitive.
+        let roomMessages = messages.get(room);
+        if (roomMessages[data.start] && roomMessages[data.end - 1]) {
+            socket.emit('messages', roomMessages.slice(data.start, data.end));
         }
     });
 
 
     on(socket,'drawClick', function(data) {
-        let id = strokes.push(data) - 1;
-        strokes[id]['id'] = id;
+        let room = getSession(socket.id).room;
+        if(!room) return; //very basic gaurd. A bit simple and repetitive.
+        let roomStrokes = strokes.get(room);
 
-        console.log(id, strokes[id]);
+        let id = roomStrokes.push(data) - 1;
+        roomStrokes[id]['id'] = id;
+
+        console.log(id, roomStrokes[id]);
 
         socket.emit('drawReceived', {
             id: id,
             data: data
         });
-
-        socket.broadcast.emit('draw', strokes[id]);
+        socket.broadcast.to(room).emit('draw', roomStrokes[id]);
     });
 
     on(socket,'clear', function() {
         strokes = [];
+        let room = getSession(socket.id).room;
+        if(!room) return; //very basic gaurd. A bit simple and repetitive.
 
-        socket.broadcast.emit('clear');
+        socket.broadcast.to(room).emit('clear');
         console.log('clearing');
     });
 
     on(socket,'message', function(data){
-        let id = messages.length;
-        messages.push({id: id,
+        let room = getSession(socket.id).room;
+        if(!room) return; //very basic gaurd. A bit simple and repetitive.
+        let roomMessages = messages.get(room);
+        let id = roomMessages.length;
+
+        roomMessages.push({id: id,
                        sessionID: socketIDtoSessionID.get(socket.id), 
                        data: data});
 
-        console.log(id, messages[id]);
+        console.log(id, roomMessages[id]);
 
         socket.emit('messageReceived', {
             id: id,
             sessionID: socketIDtoSessionID.get(socket.id),
             data: data
         });
-
-        io.emit('message', messages[id]);
+        io.to(room).emit('message', roomMessages[id]);
     });
 
     on(socket,'sessionID', function(id){
@@ -162,12 +198,34 @@ io.on('connection', function(socket) {
             sessionData.get(sessionID).nick = nick;
 
             // Notify everyone that the nick has been set.
-            io.emit('nick', { sessionID: sessionID, nick: nick });
+            let room = getSession(socket.id).room;
+            if(!room) return; //very basic gaurd. A bit simple and repetitive.
+            io.to(room).emit('nick', { sessionID: sessionID, nick: nick });
         }else{
             // Notify them that their nick was not allowed.
             socket.emit('nickStatus', false);
         }
     });
+
+    on(socket, 'joinRoom', function(room){
+        for (let r in socket.rooms){
+            socket.leave(r);
+        }
+        socket.join(room);
+
+        getSession(socket.id).room = room;
+
+        //if the room doesn't exist, initialise it.
+        if(!roomData.has(room)){
+            console.log("Initialising room: " + room);
+            roomData.set(room,{});
+            messages.set(room,[]);
+            strokes.set(room,[]);
+        }
+
+        console.log("Client joined room: " + room);
+        socket.emit('joinedRoom');
+    })
 
 });
 
