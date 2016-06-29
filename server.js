@@ -58,6 +58,7 @@ function startRound(room){
     roomState.playersToFinish = roomState.playerList.slice(1) // The other players.
     io.to(room).emit('startRound',{artist: roomState.artist});
     let artistSocketID = sessionIDtoSocketID.get(roomState.artist);
+    console.log("Releasing the game word to client with socket id: " + artistSocketID);
     io.to(artistSocketID).emit('gameWord', roomState.word);
 }
 
@@ -236,7 +237,6 @@ io.on('connection', function(socket) {
     on(socket, 'joinRoom', function(room){
         // This should keep the socket in it's default room but remove the 
         // one it's been added to.
-        console.log(Object.keys(socket.rooms) + " " + socket.id + " " + socket.rooms.length)
         for (let room of Object.keys(socket.rooms)){
             if(room !== socket.id){
                 socket.leave(room);
@@ -262,8 +262,8 @@ io.on('connection', function(socket) {
             strokes.set(room,[]);
         }
         let roomState = roomData.get(room);
-        roomState.playerList.push(session);
-        roomState.scores.set(session,0);
+        roomState.playerList.push(session.id);
+        roomState.scores.set(session.id,0);
 
         if(roomState.playerList.length > 1 && roomState.started === false){
             startRound(room);
