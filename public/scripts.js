@@ -50,22 +50,23 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
     socket.emit('sessionID', localStorage.getItem('sessionID'));
 
-    function requestMissingStrokes() {
-        var keys = Object.getOwnPropertyNames(strokes).map(Number);
+
+    function requestMissing(name, list, currentPos) {
+        var keys = Object.getOwnPropertyNames(list).map(Number);
 
         if (keys[0] != 0) {
             keys.unshift(-1);
         }
 
-        if (keys[keys.length - 1] != currentStroke) {
-            keys.push(currentStroke + 1);
+        if (keys[keys.length - 1] != currentPos) {
+            keys.push(currentPos + 1);
         }
 
         for (var i = 0; i < keys.length - 1; i++) {
             if (keys[i+1] - keys[i] == 2) {
-                socket.emit('getStroke', keys[i] + 1);
+                socket.emit('get'+name, keys[i] + 1);
             } else if (keys[i+1] - keys[i] > 2) {
-                socket.emit('getStrokes', {
+                socket.emit('get'+name+'s', {
                     start: keys[i] + 1,
                     end: keys[i+1]
                 });
@@ -73,27 +74,12 @@ document.addEventListener("DOMContentLoaded", function(event) {
         }
     }
 
+    function requestMissingStrokes() {
+        requestMissing('Stroke',strokes,currentStroke);
+    }
+
     function requestMissingMessages() {
-        var keys = Object.getOwnPropertyNames(messages).map(Number);
-
-        if (keys[0] != 0) {
-            keys.unshift(-1);
-        }
-
-        if (keys[keys.length - 1] != currentMessage) {
-            keys.push(currentMessage + 1);
-        }
-
-        for (var i = 0; i < keys.length - 1; i++) {
-            if (keys[i+1] - keys[i] == 2) {
-                socket.emit('getMessage', keys[i] + 1);
-            } else if (keys[i+1] - keys[i] > 2) {
-                socket.emit('getMessages', {
-                    start: keys[i] + 1,
-                    end: keys[i+1]
-                });
-            }
-        }
+        requestMissing('Message',messages,currentMessage);
     }
 
     socket.on('joinedRoom', function(){

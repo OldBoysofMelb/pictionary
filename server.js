@@ -65,7 +65,9 @@ io.on('connection', function(socket) {
         let room = getSession(socket.id).room;
         if(!room) return; //very basic gaurd. A bit simple and repetitive.
         for (var [key, value] of sessionData.entries()) {
-            // There might be a smarter way of doing this, but I don't know
+            //There's a small problem with this. If a person leaves a room, their
+            //Nick is no longer avaliable for late joiners. I think we have to pick
+            //Our battles with this one though.
             if(value.room == room) nicks.push([key, value.nick]);
         }   
         socket.emit('nicks', nicks);
@@ -181,7 +183,6 @@ io.on('connection', function(socket) {
         // check if nick is unique. 
         let unique = true;
         for (let value of sessionData.values()) {
-            console.log(nick + " " + value.nick);
             if(nick === value.nick){
                 unique = false;
                 break;
