@@ -236,7 +236,13 @@ io.on('connection', function(socket) {
     on(socket, 'joinRoom', function(room){
         // This should keep the socket in it's default room but remove the 
         // one it's been added to.
-        if(socket.rooms.length > 1) socket.leave(socket.rooms[1]);
+        console.log(Object.keys(socket.rooms) + " " + socket.id + " " + socket.rooms.length)
+        for (let room of Object.keys(socket.rooms)){
+            if(room !== socket.id){
+                socket.leave(room);
+            }
+        }
+        //if(socket.rooms.length > 1) socket.leave(socket.rooms[1]);
         socket.join(room);
 
         let session = getSession(socket.id);
