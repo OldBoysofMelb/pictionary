@@ -13,7 +13,7 @@ app.get('/', function(req, res){
     res.sendFile(__dirname + '/index.html');
 });
 
-const lengthOfRound = 90000; //ms
+const lengthOfRound = 100*1000; //ms
 
 var strokes = new Map(); // room name to array of strokes
 var messages = new Map(); // room name to array of messages
@@ -48,20 +48,92 @@ function getSession(socketID){
     return session;
 }
 
-// Starts a round of pictionary in a given room.
-function startRound(room){
+function sendScores(room){
     let roomState = roomData.get(room);
-    roomState.started = true;
-    roomState.artist = roomState.playerList[0]; // We pick the first player
-    roomState.startTime = Date.now();
-    roomState.word = "Hot Dog" //Todo, get this word from somewhere.
-    roomState.playersToFinish = roomState.playerList.slice(1) // The other players.
-    io.to(room).emit('startRound',{artist: roomState.artist});
-    let artistSocketID = sessionIDtoSocketID.get(roomState.artist);
-    console.log("Releasing the game word to client with socket id: " + artistSocketID);
-    io.to(artistSocketID).emit('gameWord', roomState.word);
+    let scores = [];
+    for (let [key, value] of roomState.scores.entries()) {
+        scores.push([key, value]);
+    }
+    io.to(room).emit('scores', scores);
 }
 
+function clearOldSessions(room){
+    for(let [key, value] in sessionData.entries()){
+        if(value.room === room && Date.Now() - value.accessTime > 2*60*1000){
+            socketIDtoSessionID.delete(sessionIDtoSocketID.get(key));
+            sessionIDtoSocketID.delete(key);
+            sessionData.delete(key);
+            leaveRoom(key,value.room);
+        }
+    }
+}
+
+function initialiseRoom(room){
+    roomData.set(room,{ scores: new Map(),
+                        started: false,
+                        artist: null,
+                        word: "",
+                        playerList: [],
+                        playersToFinish: [],
+                        startTime: null,
+                        turn: 0});
+    messages.set(room,[]);
+    strokes.set(room,[]);
+}
+
+// Starts a round of pictionary in a given room.
+function startRound(room){
+    console.log("Room : " + room);
+    let roomState = roomData.get(room);
+    clearRoom(room);
+
+    roomState.started = true;
+    roomState.artist = roomState.playerList[roomState.turn]; // We pick the first player
+    roomState.startTime = Date.now();
+    roomState.word = "Hot Dog" //Todo, get this word from somewhere.
+    roomState.timer = setTimeout(endRound,lengthOfRound,room);
+
+    let currentplayers = roomState.playerList.slice() // Copy of array
+    currentplayers.splice(roomState.turn,1) // The other players.
+    roomState.playersToFinish = currentplayers;
+
+    io.to(room).emit('startRound',{artist: roomState.artist});
+    let artistSocketID = sessionIDtoSocketID.get(roomState.artist);
+    console.log("Releasing the game word to client with id: " + roomState.artist);
+    io.to(artistSocketID).emit('gameWord', roomState.word);
+
+    roomState.turn += 1;
+}
+
+function endRound(room){
+    let roomState = roomData.get(room);
+    clearTimeout(roomState.timer);
+    if(roomState.turn >= roomState.playerList.length) roomState.turn = 0;
+    clearOldSessions(room);
+    sendScores(room);
+    if(roomState.started) startRound(room);
+}
+
+function clearRoom(room){
+    if(!room) return; //very basic gaurd. A bit simple and repetitive.
+    strokes.set(room,[]);
+    io.to(room).emit('clear');
+    console.log('clearing');
+}
+
+function leaveRoom(playerID, roomID){
+    if(!roomData.has(roomID)) return; // Very basic guard lol
+    let index = roomData.get(roomID).playerList.indexOf(playerID);
+    roomData.get(roomID).playerList.splice(index, 1);
+    roomData.get(roomID).scores.delete(playerID);
+    if(roomData.get(roomID).playerList.length <= 1){
+        roomData.get(roomID).started = false;
+        endRound(roomID);
+    }
+    if(roomData.get(roomID).playerList.length === 0){
+        roomData.delete(roomID);
+    }
+}
 
 io.on('connection', function(socket) {
 
@@ -78,7 +150,7 @@ io.on('connection', function(socket) {
     });
 
     on(socket,'getNicks', function(){
-        var nicks = [];
+        let nicks = [];
         let room = getSession(socket.id).room;
         if(!room) return; //very basic gaurd. A bit simple and repetitive.
         for (var [key, value] of sessionData.entries()) {
@@ -135,7 +207,7 @@ io.on('connection', function(socket) {
             let id = roomStrokes.push(data) - 1;
             roomStrokes[id]['id'] = id;
 
-            console.log("lalalal" + id, roomStrokes[id]);
+            console.log(id, roomStrokes[id]);
 
             socket.emit('drawReceived', {
                 id: id,
@@ -146,13 +218,10 @@ io.on('connection', function(socket) {
     });
 
     on(socket,'clear', function() {
-        strokes = [];
+
         let room = getSession(socket.id).room;
-        if(!room) return; //very basic gaurd. A bit simple and repetitive.
-        // Only allow clearing if this is the artist.
         if(socketIDtoSessionID.get(socket.id) === roomData.get(room).artist){
-            socket.broadcast.to(room).emit('clear');
-            console.log('clearing');
+            clearRoom(room);
         }
     });
 
@@ -170,14 +239,17 @@ io.on('connection', function(socket) {
             console.log(id, roomMessages[id]);
 
             if(data == roomData.get(room).word){ // is the guess correct, if so:
-                if(roomData.get(room).playersToFinish.includes(session)){
+                if(roomData.get(room).playersToFinish.includes(session.id)){
                     // Update their score
-                    let score = roomData.get(room).scores.get(getSession(socket.id));
-                    score += (lengthOfRound - Date.now() - roomData.get(room).startTime)/1000;
-                    roomData.get(room).scores.set(getSession(socket.id),score);
+                    let score = roomData.get(room).scores.get(session.id);
+                    score += Math.round((lengthOfRound- ( Date.now() - roomData.get(room).startTime))/1000);
+                    roomData.get(room).scores.set(session.id,score);
                     //Remove the player from list of those to finish
-                    let index = roomData.get(room).playersToFinish.indexOf(session);
+                    let index = roomData.get(room).playersToFinish.indexOf(session.id);
                     roomData.get(room).playersToFinish.splice(index, 1);
+                    if(roomData.get(room).playersToFinish.length === 0){
+                        endRound(room);
+                    }
                 }
             }else{
                 // Publish the message
@@ -223,7 +295,7 @@ io.on('connection', function(socket) {
             }
         }
 
-        let sessionID = socketIDtoSessionID.get(socket.id);
+        let sessionID = socketIDtoSessionID.get(socket.id);3
 
         if(unique && sessionID){
             // Notify them their nick was accepted
@@ -243,31 +315,25 @@ io.on('connection', function(socket) {
     });
 
     on(socket, 'joinRoom', function(room){
+
+        let session = getSession(socket.id);
+
         // This should keep the socket in it's default room but remove the 
         // one it's been added to.
         for (let room of Object.keys(socket.rooms)){
             if(room !== socket.id){
                 socket.leave(room);
+                leaveRoom(session.id,room);
             }
         }
-        //if(socket.rooms.length > 1) socket.leave(socket.rooms[1]);
         socket.join(room);
 
-        let session = getSession(socket.id);
         session.room = room;
 
         //if the room doesn't exist, initialise it.
         if(!roomData.has(room)){
             console.log("Initialising room: " + room);
-            roomData.set(room,{ scores: new Map(),
-                                started: false,
-                                artist: null,
-                                word: "",
-                                playerList: [],
-                                playersToFinish: [],
-                                startTime: null});
-            messages.set(room,[]);
-            strokes.set(room,[]);
+            initialiseRoom(room);
         }
         let roomState = roomData.get(room);
         roomState.playerList.push(session.id);
@@ -283,6 +349,15 @@ io.on('connection', function(socket) {
         // We emit this message to notify people in the room of our nick
         io.to(room).emit('nick', { sessionID: session.id, nick: session.nick});
 
+    });
+
+    on(socket,'leaveRoom', function(){
+        let session = getSession(socket.id);
+        let room = session.room;
+        if(room){
+            socket.leave(room);
+            leaveRoom(session.id,room);
+        }            
     });
 
 });

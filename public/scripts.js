@@ -18,6 +18,12 @@ document.addEventListener("DOMContentLoaded", function(event) {
     var messages = {};
     var currentMessage = 0;
 
+    // Game state
+    var Game = {};
+    Game.artist = "";
+    Game.players = [];
+    Game.scores = new Map();
+
     function draw(x, y, type, colour, size) {
         ctx.strokeStyle = colour;
         ctx.lineWidth = size;
@@ -48,7 +54,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
         $('#messages').scrollTop($('#messages')[0].scrollHeight);
     }
 
-    socket.emit('sessionID', localStorage.getItem('sessionID'));
+    function getSessionID(){
+        return localStorage.getItem('sessionID');
+    }
+
+    socket.emit('sessionID', getSessionID());
 
 
     function requestMissing(name, list, currentPos) {
@@ -174,13 +184,34 @@ document.addEventListener("DOMContentLoaded", function(event) {
         }
     });
 
+    socket.on('scores', function(data){
+        // We receive a list of key value pairs. We then add this to our map.
+        $('#scores').empty();
+        for (let entry of data){
+            Game.scores.set(entry[0], entry[1]);
+            $('#scores').append($('<div>').text(nicks.get(entry[0]) + ": " + entry[1]));
+        }
+    });
+
     socket.on('nickStatus', function(accepted){
         if(accepted){
             $('#nick').val('Your Nick is now set.');
         }else{
             $('#nick').val('Nick already taken!');
         }
-    })
+    });
+
+    socket.on('gameWord', function(word){
+        $("#gameStatus").text("You are drawing " + word);
+    });
+
+    socket.on('startRound', function(data){
+        if(data.artist != getSessionID()){
+            $("#gameStatus").text("You are guessing");
+        }else{
+            // TODO any changes for artist aside from gameWord message.
+        }
+    });
 
     $('canvas').on('drag dragstart dragend', function(e) {
         var offset, type, x, y, colour, size;
@@ -233,6 +264,15 @@ document.addEventListener("DOMContentLoaded", function(event) {
         $('#room').val('');
         return false;
     });
+
+    $('#leaveRoom').on('click', function(e) {
+        socket.emit('leaveRoom');
+    });
+
+    window.onbeforeunload = function () {
+        socket.emit('leaveRoom');
+    };
+
 
 });
 
