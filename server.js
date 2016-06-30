@@ -130,55 +130,63 @@ io.on('connection', function(socket) {
         let room = getSession(socket.id).room;
         if(!room) return; //very basic gaurd. A bit simple and repetitive.
         let roomStrokes = strokes.get(room);
+        // Only allow drawing if this is the artist.
+        if(socketIDtoSessionID.get(socket.id) === roomData.get(room).artist){
+            let id = roomStrokes.push(data) - 1;
+            roomStrokes[id]['id'] = id;
 
-        let id = roomStrokes.push(data) - 1;
-        roomStrokes[id]['id'] = id;
+            console.log("lalalal" + id, roomStrokes[id]);
 
-        console.log(id, roomStrokes[id]);
-
-        socket.emit('drawReceived', {
-            id: id,
-            data: data
-        });
-        socket.broadcast.to(room).emit('draw', roomStrokes[id]);
+            socket.emit('drawReceived', {
+                id: id,
+                data: data
+            });
+            socket.broadcast.to(room).emit('draw', roomStrokes[id]);
+        }
     });
 
     on(socket,'clear', function() {
         strokes = [];
         let room = getSession(socket.id).room;
         if(!room) return; //very basic gaurd. A bit simple and repetitive.
-
-        socket.broadcast.to(room).emit('clear');
-        console.log('clearing');
+        // Only allow clearing if this is the artist.
+        if(socketIDtoSessionID.get(socket.id) === roomData.get(room).artist){
+            socket.broadcast.to(room).emit('clear');
+            console.log('clearing');
+        }
     });
 
     on(socket,'message', function(data){
         let session = getSession(socket.id);
         let room = session.room;
         if(!room) return; //very basic gaurd. A bit simple and repetitive.
-        let roomMessages = messages.get(room);
-        let id = roomMessages.length;
 
-        console.log(id, roomMessages[id]);
+        // Prevent the artist from sending messages.
+        if(socketIDtoSessionID.get(socket.id) !== roomData.get(room).artist){
 
-        if(data == roomData.get(room).word){ // is the guess correct, if so:
-            if(roomData.get(room).playersToFinish.includes(session)){
-                // Update their score
-                let score = roomData.get(room).scores.get(getSession(socket.id));
-                score += (lengthOfRound - Date.now() - roomData.get(room).startTime)/1000;
-                roomData.get(room).scores.set(getSession(socket.id),score);
-                //Remove the player from list of those to finish
-                let index = roomData.get(room).playersToFinish.indexOf(session);
-                roomData.get(room).playersToFinish.splice(index, 1);
+            let roomMessages = messages.get(room);
+            let id = roomMessages.length;
+
+            console.log(id, roomMessages[id]);
+
+            if(data == roomData.get(room).word){ // is the guess correct, if so:
+                if(roomData.get(room).playersToFinish.includes(session)){
+                    // Update their score
+                    let score = roomData.get(room).scores.get(getSession(socket.id));
+                    score += (lengthOfRound - Date.now() - roomData.get(room).startTime)/1000;
+                    roomData.get(room).scores.set(getSession(socket.id),score);
+                    //Remove the player from list of those to finish
+                    let index = roomData.get(room).playersToFinish.indexOf(session);
+                    roomData.get(room).playersToFinish.splice(index, 1);
+                }
+            }else{
+                // Publish the message
+                roomMessages.push({id: id,
+                               sessionID: socketIDtoSessionID.get(socket.id), 
+                               data: data});
+                io.to(room).emit('message', roomMessages[id]);
             }
-        }else{
-            // Publish the message
-            roomMessages.push({id: id,
-                           sessionID: socketIDtoSessionID.get(socket.id), 
-                           data: data});
-            io.to(room).emit('message', roomMessages[id]);
         }
-
     });
 
     on(socket,'sessionID', function(id){
