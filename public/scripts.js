@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const colour = ctx.strokeStyle;
     const size = ctx.lineWidth;
     const type = e.handleObj.type;
-    const offset = $(this).offset();
+    const offset = $('canvas').offset();
     const x = e.pageX - offset.left;
     const y = e.pageY - offset.top;
     draw(x, y, type, colour, size);
