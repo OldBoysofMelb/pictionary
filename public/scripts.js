@@ -58,22 +58,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   socket.emit('sessionID', getSessionID());
 
+
   function requestMissing(name, list, currentPos) {
     const keys = Object.getOwnPropertyNames(list).map(Number);
 
-    if (keys[0] !== 0) {
+    if (keys[0] != 0) {
       keys.unshift(-1);
     }
 
-    if (keys[keys.length - 1] !== currentPos) {
+    if (keys[keys.length - 1] != currentPos) {
       keys.push(currentPos + 1);
     }
 
-    for (let i = 0; i < keys.length - 1; i++) {
-      if (keys[i + 1] - keys[i] === 2) {
-        socket.emit(`get ${name}`, keys[i] + 1);
+    for (var i = 0; i < keys.length - 1; i++) {
+      if (keys[i + 1] - keys[i] == 2) {
+        socket.emit('get'+ name, keys[i] + 1);
       } else if (keys[i + 1] - keys[i] > 2) {
-        socket.emit(`get ${name}s`, {
+        socket.emit('get' + name + 's', {
           start: keys[i] + 1,
           end: keys[i + 1],
         });
@@ -116,24 +117,23 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('sessionID', data);
   });
 
-  socket.on('currentStroke', (data) => {
-    currentStroke = data;
-    // window.console.log(currentStroke);
-
-    if (strokes.length !== currentStroke) {
-      requestMissingStrokes();
-    }
-  });
-
   socket.on('currentMessage', (data) => {
     currentMessage = data;
     // window.console.log(currentMessage);
 
-    if (messages.length !== currentMessage) {
+    if (messages.length != currentMessage) {
       requestMissingMessages();
     }
   });
 
+  socket.on('currentStroke', (data) => {
+    currentStroke = data;
+    // window.console.log(currentStroke);
+
+    if (strokes.length != currentStroke) {
+      requestMissingStrokes();
+    }
+  });
 
   socket.on('draw', (data) => {
     strokes[data.id] = data;
@@ -141,19 +141,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('drawStrokes', (data) => {
-    data.forEach((i) => {
+    console.log("told to draw strokes");
+    for (var i in data) {
       strokes[data[i].id] = data[i];
       draw(data[i].x, data[i].y, data[i].type, data[i].colour, data[i].size);
-    });
+    }
   });
 
+
   socket.on('messages', (data) => {
-    data.forEach((i) => {
-      // Curious name, is i meant to be a value (it is)
-      // or an index. or both
+    console.log("told to traw messages");
+    for (var i in data) {
       messages[data[i].id] = data[i];
       showMessage(data[i].sessionID, data[i].data);
-    });
+    }
   });
 
 
@@ -262,4 +263,3 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.emit('leaveRoom');
   };
 });
-
